@@ -68,7 +68,7 @@ Wir haben für jede numerische Spalte den dokumentierten gültigen Wertebereich 
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.65\textwidth]{../img/age_distribution.png}
+    \includegraphics[width=0.65\textwidth]{./age_distribution.png}
     \caption{Boxplot der \texttt{age}-Spalte \emph{vor} der Bereinigung. Die extremen Datenfehler (z.\,B. \texttt{11237}) sind als Ausreißerpunkte oben sichtbar und stauchen den gültigen Wertebereich [15, 22] optisch zur Nulllinie zusammen.}
     \label{fig:age_distribution}
 \end{figure}
@@ -82,7 +82,7 @@ Die drei Periodennoten G1, G2 und G3 sind ähnlich verteilt mit Median um 11--12
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.6\textwidth]{../img/grades_boxplot.png}
+    \includegraphics[width=0.6\textwidth]{./grades_boxplot.png}
     \caption{Boxplots der Periodennoten G1, G2 und G3.}
     \label{fig:grades_boxplot}
 \end{figure}
@@ -92,7 +92,7 @@ G3 ist annähernd normalverteilt mit Schwerpunkt im Bereich 10--13. Auffällig i
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.6\textwidth]{../img/g3_histogram.png}
+    \includegraphics[width=0.6\textwidth]{./g3_histogram.png}
     \caption{Histogramm der Endnote G3 (Zielvariable).}
     \label{fig:g3_histogram}
 \end{figure}
@@ -102,7 +102,7 @@ Die Spalte \texttt{absences} ist stark rechtsschief verteilt: Die meisten Schül
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.6\textwidth]{../img/absences_histogram.png}
+    \includegraphics[width=0.6\textwidth]{./absences_histogram.png}
     \caption{Histogramm der Fehlzeiten \texttt{absences} --- stark rechtsschief.}
     \label{fig:absences}
 \end{figure}
@@ -112,21 +112,21 @@ Bei der Schule dominiert klar Gabriel Pereira (GP) gegenüber Mousinho da Silvei
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.55\textwidth]{../img/school_bar.png}
+    \includegraphics[width=0.55\textwidth]{./school_bar.png}
     \caption{Verteilung der Schule (GP vs. MS).}
     \label{fig:school_bar}
 \end{figure}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.55\textwidth]{../img/mjob_bar.png}
+    \includegraphics[width=0.55\textwidth]{./mjob_bar.png}
     \caption{Verteilung der Mütterberufe \texttt{Mjob}.}
     \label{fig:mjob_bar}
 \end{figure}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.55\textwidth]{../img/reason_bar.png}
+    \includegraphics[width=0.55\textwidth]{./reason_bar.png}
     \caption{Verteilung der Gründe für die Schulwahl \texttt{reason}.}
     \label{fig:reason_bar}
 \end{figure}
@@ -136,7 +136,7 @@ Die Heatmap der numerischen Spalten zeigt klar: \texttt{G1}, \texttt{G2} und \te
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.85\textwidth]{../img/correlation_heatmap.png}
+    \includegraphics[width=0.85\textwidth]{./correlation_heatmap.png}
     \caption{Korrelationsmatrix aller numerischen Spalten. Rot = positiv, blau = negativ. Die starke Korrelation zwischen G1, G2 und G3 ist der dominante Block.}
     \label{fig:heatmap}
 \end{figure}
@@ -146,7 +146,7 @@ Das Pairplot zeigt die paarweisen Zusammenhänge zwischen \texttt{studytime}, \t
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.95\textwidth]{../img/feature_pairplot.png}
+    \includegraphics[width=0.95\textwidth]{./feature_pairplot.png}
     \caption{Pairplot von \texttt{studytime}, \texttt{failures}, \texttt{absences} und den Noten G1/G2/G3.}
     \label{fig:pairplot}
 \end{figure}
@@ -203,7 +203,7 @@ Wichtig: Die Pipeline wird \textbf{nur auf den Trainingsdaten gefittet} (\texttt
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.9\textwidth]{../img/tafel_real.png}
+    \includegraphics[width=0.9\textwidth]{./tafel_real.png}
     \caption{Skizze der Preprocessing-Pipeline aus der Vorlesung, die wir hier umgesetzt haben. Die Eingaben $X_{train}$ und $Y_{train}$ werden per \texttt{make\_column\_selector} in zwei Stränge aufgeteilt: numerisch (oben: Imputer mit Median, dann Scaler) und kategorial (unten: Imputer mit 'missing', dann One-Hot-Encoder). Beide Stränge werden anschließend zu $X_{prep,train}$ wieder zusammengeführt. Die Pfeile markieren \texttt{fit}, \texttt{transform} und \texttt{inverse\_transform}.}
     \label{fig:pipeline}
 \end{figure}
@@ -319,7 +319,6 @@ Gemäß der Anforderung in \texttt{README\_Angabe.md} dokumentieren wir den LLM-
 \begin{itemize}
     \item Strukturieren des Jupyter-Notebooks gemäß der Vorgaben aus den Vorlesungs-Notebooks 02 und 04.
     \item Erkennen und Bereinigen der Datenqualitätsprobleme (Outlier, inkonsistente Kategorien).
-    \item Aufsetzen und Erklären der \texttt{scikit-learn}-Preprocessing-Pipeline.
     \item Hyperparameter-Tuning per Grid-Search (Code-Vorschlag, ausgeführt im eigenen Kernel).
     \item Formulieren dieses Berichts (Strukturvorschlag, Textentwurf).
 \end{itemize}
