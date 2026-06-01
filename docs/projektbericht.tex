@@ -51,7 +51,7 @@ Die CSV-Datei wies zwei Eigenheiten auf, die wir beim Laden berücksichtigen mus
     \item \textbf{21 leere Trailing-Spalten} hinter den 33 echten Attributen --- wir laden nur die ersten 33 mit \texttt{usecols=range(33)}.
 \end{itemize}
 
-Außerdem entfernen wir mit \texttt{dropna(how="all")} ausschließlich komplett leere Zeilen (96 Stück). Zeilen mit einzelnen fehlenden Werten (13 Stück) behalten wir bewusst --- diese werden später in der Pipeline durch \texttt{SimpleImputer} aufgefüllt. Damit erhalten wir die in der README angegebenen \textbf{649 echte Schülerdatensätze}.
+Außerdem entfernen wir mit \texttt{dropna(how='all')} ausschließlich komplett leere Zeilen (96 Stück). Zeilen mit einzelnen fehlenden Werten (13 Stück) behalten wir bewusst --- diese werden später in der Pipeline durch \texttt{SimpleImputer} aufgefüllt. Damit erhalten wir die in der README angegebenen \textbf{649 echte Schülerdatensätze}.
 
 % ============================================================
 \section{Schritt 3: Daten explorieren (EDA)}
@@ -74,12 +74,82 @@ Wir haben für jede numerische Spalte den dokumentierten gültigen Wertebereich 
 \end{figure}
 
 \subsection{Visualisierungen}
-Erstellt wurden Boxplots (Noten G1/G2/G3, age), Balkendiagramme (Schule, Mjob, reason), Histogramme (G3, Fehlzeiten) sowie eine Korrelations-Heatmap und ein Pairplot. Hervorzuheben:
-\begin{itemize}
-    \item \texttt{G1}, \texttt{G2} und \texttt{G3} sind sehr stark untereinander korreliert --- bestätigt die Aussage in der README. Damit wäre eine Vorhersage \emph{mit} G1/G2 trivial.
-    \item \texttt{absences} ist stark rechtsschief verteilt (viele Schüler mit wenigen Fehltagen, einige Ausreißer).
-    \item Die Noten G1/G2/G3 sind relativ normalverteilt mit Schwerpunkt bei 10--12.
-\end{itemize}
+
+Wir haben die wichtigsten Verteilungen und Zusammenhänge in der EDA-Phase visualisiert. Im Folgenden sind alle Plots dokumentiert.
+
+\paragraph{Verteilung der Periodennoten.}
+Die drei Periodennoten G1, G2 und G3 sind ähnlich verteilt mit Median um 11--12 und vergleichbarer Streuung über alle drei Perioden. Keine groben Ausreißer.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{../img/grades_boxplot.png}
+    \caption{Boxplots der Periodennoten G1, G2 und G3.}
+    \label{fig:grades_boxplot}
+\end{figure}
+
+\paragraph{Verteilung der Zielvariable G3.}
+G3 ist annähernd normalverteilt mit Schwerpunkt im Bereich 10--13. Auffällig ist ein nicht zu vernachlässigender Anteil von Schülern mit G3~$=0$ (komplettes Durchfallen), der als linker Tail-Effekt sichtbar wird.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{../img/g3_histogram.png}
+    \caption{Histogramm der Endnote G3 (Zielvariable).}
+    \label{fig:g3_histogram}
+\end{figure}
+
+\paragraph{Fehlzeiten.}
+Die Spalte \texttt{absences} ist stark rechtsschief verteilt: Die meisten Schüler haben 0--5 Fehltage, einzelne aber 30+. Diese Schiefe ist typisch für Zähldaten und für die Modellierung gut zu wissen.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{../img/absences_histogram.png}
+    \caption{Histogramm der Fehlzeiten \texttt{absences} --- stark rechtsschief.}
+    \label{fig:absences}
+\end{figure}
+
+\paragraph{Kategoriale Häufigkeiten.}
+Bei der Schule dominiert klar Gabriel Pereira (GP) gegenüber Mousinho da Silveira (MS). Bei den Mütterberufen sind \texttt{other} und \texttt{services} am häufigsten; bei den Gründen für die Schulwahl liegen \texttt{course} und \texttt{home} vorne.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.55\textwidth]{../img/school_bar.png}
+    \caption{Verteilung der Schule (GP vs. MS).}
+    \label{fig:school_bar}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.55\textwidth]{../img/mjob_bar.png}
+    \caption{Verteilung der Mütterberufe \texttt{Mjob}.}
+    \label{fig:mjob_bar}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.55\textwidth]{../img/reason_bar.png}
+    \caption{Verteilung der Gründe für die Schulwahl \texttt{reason}.}
+    \label{fig:reason_bar}
+\end{figure}
+
+\paragraph{Korrelationsmatrix.}
+Die Heatmap der numerischen Spalten zeigt klar: \texttt{G1}, \texttt{G2} und \texttt{G3} sind sehr stark untereinander korreliert (rote Felder oben rechts) --- das bestätigt die Aussage in der README, dass eine Vorhersage \emph{mit} G1/G2 trivial wäre. Alle anderen Features korrelieren nur schwach mit den Noten; die stärksten Einzel-Einflüsse sind \texttt{failures} (negativ) und \texttt{studytime} (positiv).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../img/correlation_heatmap.png}
+    \caption{Korrelationsmatrix aller numerischen Spalten. Rot = positiv, blau = negativ. Die starke Korrelation zwischen G1, G2 und G3 ist der dominante Block.}
+    \label{fig:heatmap}
+\end{figure}
+
+\paragraph{Pairplot ausgewählter Features.}
+Das Pairplot zeigt die paarweisen Zusammenhänge zwischen \texttt{studytime}, \texttt{failures}, \texttt{absences} und den drei Noten. Klar erkennbar sind die starke lineare Beziehung zwischen G1, G2 und G3 sowie ein deutlicher negativer Trend zwischen \texttt{failures} und den Noten.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.95\textwidth]{../img/feature_pairplot.png}
+    \caption{Pairplot von \texttt{studytime}, \texttt{failures}, \texttt{absences} und den Noten G1/G2/G3.}
+    \label{fig:pairplot}
+\end{figure}
 
 \subsection{Zusammenfassung der Funde}
 Folgende Probleme wurden für die Bereinigung notiert:
@@ -97,9 +167,9 @@ Folgende Probleme wurden für die Bereinigung notiert:
 Die in Schritt 3 gefundenen Probleme werden hier behoben:
 
 \begin{itemize}
-    \item \textbf{\texttt{sex}-Normalisierung:} \texttt{data["sex"].replace("Female", "F")} --- die Spalte enthält danach nur noch \texttt{'F'} und \texttt{'M'}.
+    \item \textbf{\texttt{sex}-Normalisierung:} \texttt{data['sex'].replace('Female', 'F')} --- die Spalte enthält danach nur noch \texttt{'F'} und \texttt{'M'}.
     \item \textbf{Age-Outlier zu NaN:} Werte außerhalb [15, 22] werden auf \texttt{NaN} gesetzt. \\
-    \texttt{data.loc[(data["age"]<15) | (data["age"]>22), "age"] = nan}\\
+    \texttt{data.loc[(data['age']<15) | (data['age']>22), 'age'] = nan}\\
     Wir setzen sie nicht auf einen Default-Wert und löschen die Zeilen auch nicht, sondern überlassen die Behandlung dem \texttt{SimpleImputer} der Pipeline. Damit gehen die übrigen 32 Spalten der betroffenen Schüler nicht verloren.
 \end{itemize}
 
@@ -109,9 +179,9 @@ Die in Schritt 3 gefundenen Probleme werden hier behoben:
 \section{Schritt 5: Daten vorbereiten}
 
 \subsection{Features und Target}
-Als Zielvariable nehmen wir \texttt{y = data["G3"]}. Als Features nutzen wir alle Spalten \emph{außer} \texttt{G1}, \texttt{G2} und \texttt{G3}:
+Als Zielvariable nehmen wir \texttt{y = data['G3']}. Als Features nutzen wir alle Spalten \emph{außer} \texttt{G1}, \texttt{G2} und \texttt{G3}:
 \begin{verbatim}
-X = data.drop(columns=["G1", "G2", "G3"])
+X = data.drop(columns=['G1', 'G2', 'G3'])
 \end{verbatim}
 Damit modellieren wir wie eingangs entschieden die Frühwarn-Variante: G3 nur aus Hintergrundinformationen.
 
@@ -125,8 +195,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 \subsection{Preprocessing-Pipeline}
 Wir verwenden einen \texttt{ColumnTransformer} mit zwei Strängen, der numerische und kategoriale Spalten automatisch per \texttt{make\_column\_selector} unterscheidet:
 \begin{itemize}
-    \item \textbf{Numerisch:} \texttt{SimpleImputer(strategy="median")} $\to$ \texttt{MinMaxScaler()}
-    \item \textbf{Kategorial:} \texttt{SimpleImputer(strategy="constant", fill\_value="missing")} $\to$ \texttt{OneHotEncoder(handle\_unknown="ignore")}
+    \item \textbf{Numerisch:} \texttt{SimpleImputer(strategy='median')} $\to$ \texttt{MinMaxScaler()}
+    \item \textbf{Kategorial:} \texttt{SimpleImputer(strategy='constant', fill\_value='missing')} $\to$ \texttt{OneHotEncoder(handle\_unknown='ignore')}
 \end{itemize}
 
 Wichtig: Die Pipeline wird \textbf{nur auf den Trainingsdaten gefittet} (\texttt{fit\_transform}), das Testset wird mit den gelernten Parametern transformiert (\texttt{transform}) --- kein Data Leakage. Ergebnis: 519 Trainings- und 130 Test-Datenpunkte mit jeweils mehreren Dutzend Spalten nach One-Hot-Encoding.
@@ -134,7 +204,7 @@ Wichtig: Die Pipeline wird \textbf{nur auf den Trainingsdaten gefittet} (\texttt
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{../img/tafel_real.png}
-    \caption{Skizze der Preprocessing-Pipeline aus der Vorlesung, die wir hier umgesetzt haben. Die Eingaben $X_{train}$ und $Y_{train}$ werden per \texttt{make\_column\_selector} in zwei Stränge aufgeteilt: numerisch (oben: Imputer mit Median, dann Scaler) und kategorial (unten: Imputer mit "missing", dann One-Hot-Encoder). Beide Stränge werden anschließend zu $X_{prep,train}$ wieder zusammengeführt. Die Pfeile markieren \texttt{fit}, \texttt{transform} und \texttt{inverse\_transform}.}
+    \caption{Skizze der Preprocessing-Pipeline aus der Vorlesung, die wir hier umgesetzt haben. Die Eingaben $X_{train}$ und $Y_{train}$ werden per \texttt{make\_column\_selector} in zwei Stränge aufgeteilt: numerisch (oben: Imputer mit Median, dann Scaler) und kategorial (unten: Imputer mit 'missing', dann One-Hot-Encoder). Beide Stränge werden anschließend zu $X_{prep,train}$ wieder zusammengeführt. Die Pfeile markieren \texttt{fit}, \texttt{transform} und \texttt{inverse\_transform}.}
     \label{fig:pipeline}
 \end{figure}
 
@@ -149,8 +219,8 @@ clusters_train = kmeans.fit_predict(X_train_prep)
 
 Anschließend prüfen wir, ob die Cluster mit der Endnote zusammenhängen:
 \begin{verbatim}
-DataFrame({"cluster": clusters_train, "G3": y_train.values}) \
-    .groupby("cluster")["G3"].agg(["mean", "std", "count"])
+DataFrame({'cluster': clusters_train, 'G3': y_train.values}) \
+    .groupby('cluster')['G3'].agg(['mean', 'std', 'count'])
 \end{verbatim}
 
 \paragraph{Beobachtung.} Die Cluster zeigen leicht unterschiedliche G3-Mittelwerte, der Unterschied ist aber moderat (Größenordnung von 1--2 Notenpunkten). Das deutet darauf hin, dass die Hintergrundfeatures zwar gewisse Gruppen erzeugen, diese aber nur einen kleinen Teil der Notenstreuung erklären. Diese Einschätzung passt zu den späteren Ergebnissen im Supervised-Schritt.
