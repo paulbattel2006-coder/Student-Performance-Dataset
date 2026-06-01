@@ -15,3 +15,6 @@ Notebook starten:
 ```bash
 jupyter notebook notebooks/student_performance.ipynb
 ```
+
+Hier gehts zu unserem Projektbericht
+[Projektbericht]("./docs/Data_Science.pdf")
