@@ -1,12 +1,259 @@
-#PROMT 
-Kurze Beschreibung für das Layout-Overleafe unsere Projektdokumentation
+\documentclass[11pt,a4paper]{article}
 
-#Titelfolie 
-formatitierung; hier wollen wir unsere 
-Name der Gruppemitglieder: Langegger, Lantschner, Battel, Buchreiter 
-Unser Thema _ Student Performence Dataset
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue
+}
 
+\title{Student Performance --- Projektbericht\\
+\large Vorhersage der portugiesischen Endnote (G3) mittels Machine Learning}
+\author{Langegger \and Lantschner \and Battel \and Buchreiter}
+\date{\today}
 
-#2te Seite 
-Inhaltsfolie mit passenden subhealines für die Dokumentation von unsere Gruppenarbeit 
+\begin{document}
 
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Einleitung und Aufgabenstellung}
+
+Im Rahmen des Gruppenprojekts haben wir den Datensatz \texttt{student\_per\-formance\_data.csv} bearbeitet. Er enthält 649 Schülerdatensätze aus zwei portugiesischen Sekundarschulen (Gabriel Pereira und Mousinho da Silveira) mit 33 Attributen pro Schüler --- demografisch, familiär, schulisch und Lifestyle-bezogen.
+
+\paragraph{Zielvariable.} Wir modellieren die Endnote im Portugiesisch-Kurs (\texttt{G3}, numerisch von 0 bis 20). Laut Datensatz-README ist diese Note stark mit den Periodennoten \texttt{G1} und \texttt{G2} korreliert. Das Vorhersagen von \texttt{G3} unter Einbezug von \texttt{G1}/\texttt{G2} ist trivial; deutlich nützlicher und schwieriger ist die \textbf{Frühwarnsystem-Variante}, bei der ausschließlich Hintergrundmerkmale verwendet werden. Diese Variante haben wir umgesetzt.
+
+\paragraph{Methodik.} Wir orientieren uns am Aufbau der Vorlesungs-Notebooks \href{run:../../data-science-ue-ct/notebooks/02_unsupervised_learning.ipynb}{\texttt{02\_unsupervised\_learning}} und \href{run:../../data-science-ue-ct/notebooks/04_supervised_regression.ipynb}{\texttt{04\_supervised\_regression}} und folgen einer klaren siebenstufigen Pipeline (Werkzeuge laden, Daten laden, EDA, Daten berichtigen, Daten vorbereiten, Unsupervised Learning, Supervised Learning) plus Extra-Schritt (Polynomialregression).
+
+% ============================================================
+\section{Schritt 1: Werkzeuge laden}
+
+Wir verwenden \texttt{pandas} (\texttt{read\_csv}, \texttt{DataFrame}) für die Datenmanipulation, \texttt{seaborn} und \texttt{matplotlib} für Visualisierungen, sowie \texttt{scikit-learn} für die ML-Pipeline (\texttt{train\_test\_split}, \texttt{KMeans}, \texttt{DecisionTreeRegressor}, \texttt{LinearRegression}, \texttt{PolynomialFeatures}, \texttt{Pipeline}, \texttt{ColumnTransformer}, \texttt{SimpleImputer}, \texttt{MinMaxScaler}, \texttt{OneHotEncoder}, sowie die Metriken \texttt{r2\_score}, \texttt{mean\_absolute\_error}, \texttt{root\_mean\_squared\_error}).
+
+% ============================================================
+\section{Schritt 2: Daten laden}
+
+Die CSV-Datei wies zwei Eigenheiten auf, die wir beim Laden berücksichtigen mussten:
+
+\begin{itemize}
+    \item \textbf{Zeile 0 ist eine Beschreibung}, kein Header --- wir überspringen sie mit \texttt{skiprows=[0]}.
+    \item \textbf{21 leere Trailing-Spalten} hinter den 33 echten Attributen --- wir laden nur die ersten 33 mit \texttt{usecols=range(33)}.
+\end{itemize}
+
+Außerdem entfernen wir mit \texttt{dropna(how="all")} ausschließlich komplett leere Zeilen (96 Stück). Zeilen mit einzelnen fehlenden Werten (13 Stück) behalten wir bewusst --- diese werden später in der Pipeline durch \texttt{SimpleImputer} aufgefüllt. Damit erhalten wir die in der README angegebenen \textbf{649 echte Schülerdatensätze}.
+
+% ============================================================
+\section{Schritt 3: Daten explorieren (EDA)}
+
+Die Exploration hat mehrere problematische Strukturen offengelegt. Wir haben systematisch geprüft:
+
+\subsection{Kategoriale Spalten}
+Pro Spalte haben wir alle einzigartigen Werte ausgegeben und gegen die README-Dokumentation verglichen. \textbf{Beobachtung:} Die Spalte \texttt{sex} enthält neben den dokumentierten Werten \texttt{'F'} und \texttt{'M'} fälschlicherweise auch den Wert \texttt{'Female'}. Alle anderen kategorialen Spalten (\texttt{school}, \texttt{Mjob}, \texttt{Fjob}, \texttt{reason}, \texttt{guardian} und die ja/nein-Spalten) waren sauber.
+
+\subsection{Numerische Spalten}
+Wir haben für jede numerische Spalte den dokumentierten gültigen Wertebereich (z.\,B. \texttt{age}~$\in$~[15, 22], \texttt{G3}~$\in$~[0, 20]) hinterlegt und nach Werten außerhalb gesucht.
+
+\textbf{Beobachtung:} Die Spalte \texttt{age} enthält \textbf{8 völlig unplausible Werte}: \texttt{1511}, \texttt{1235}, \texttt{1777}, \texttt{11237}, \texttt{999}, \texttt{1991}, \texttt{1512}, \texttt{1721}. Das sind eindeutig Datenfehler (Tippfehler bzw. fehlerhafte Eingaben). Alle anderen numerischen Spalten lagen vollständig in ihren Bereichen.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.65\textwidth]{../img/age_distribution.png}
+    \caption{Boxplot der \texttt{age}-Spalte \emph{vor} der Bereinigung. Die extremen Datenfehler (z.\,B. \texttt{11237}) sind als Ausreißerpunkte oben sichtbar und stauchen den gültigen Wertebereich [15, 22] optisch zur Nulllinie zusammen.}
+    \label{fig:age_distribution}
+\end{figure}
+
+\subsection{Visualisierungen}
+Erstellt wurden Boxplots (Noten G1/G2/G3, age), Balkendiagramme (Schule, Mjob, reason), Histogramme (G3, Fehlzeiten) sowie eine Korrelations-Heatmap und ein Pairplot. Hervorzuheben:
+\begin{itemize}
+    \item \texttt{G1}, \texttt{G2} und \texttt{G3} sind sehr stark untereinander korreliert --- bestätigt die Aussage in der README. Damit wäre eine Vorhersage \emph{mit} G1/G2 trivial.
+    \item \texttt{absences} ist stark rechtsschief verteilt (viele Schüler mit wenigen Fehltagen, einige Ausreißer).
+    \item Die Noten G1/G2/G3 sind relativ normalverteilt mit Schwerpunkt bei 10--12.
+\end{itemize}
+
+\subsection{Zusammenfassung der Funde}
+Folgende Probleme wurden für die Bereinigung notiert:
+\begin{enumerate}
+    \item \texttt{sex == 'Female'} muss zu \texttt{'F'} normalisiert werden.
+    \item 8 \texttt{age}-Outlier müssen entfernt werden.
+    \item 13 Zeilen haben einzelne fehlende Werte --- diese werden in der Pipeline imputiert.
+    \item G1/G2 dürfen für die Frühwarn-Variante nicht als Features verwendet werden.
+    \item Numerische Spalten sind als \texttt{float64} statt \texttt{int} geladen (wegen NaN-Werten) --- funktional unproblematisch.
+\end{enumerate}
+
+% ============================================================
+\section{Schritt 4: Daten berichtigen}
+
+Die in Schritt 3 gefundenen Probleme werden hier behoben:
+
+\begin{itemize}
+    \item \textbf{\texttt{sex}-Normalisierung:} \texttt{data["sex"].replace("Female", "F")} --- die Spalte enthält danach nur noch \texttt{'F'} und \texttt{'M'}.
+    \item \textbf{Age-Outlier zu NaN:} Werte außerhalb [15, 22] werden auf \texttt{NaN} gesetzt. \\
+    \texttt{data.loc[(data["age"]<15) | (data["age"]>22), "age"] = nan}\\
+    Wir setzen sie nicht auf einen Default-Wert und löschen die Zeilen auch nicht, sondern überlassen die Behandlung dem \texttt{SimpleImputer} der Pipeline. Damit gehen die übrigen 32 Spalten der betroffenen Schüler nicht verloren.
+\end{itemize}
+
+\paragraph{Gegencheck.} Ein erneuter Boxplot von \texttt{age} bestätigt, dass nun alle Werte im Bereich [15, 22] liegen. Es bleibt ein einzelner statistischer Ausreißer bei 22 --- aber das ist ein \emph{gültiger} Wert laut README, kein Datenfehler.
+
+% ============================================================
+\section{Schritt 5: Daten vorbereiten}
+
+\subsection{Features und Target}
+Als Zielvariable nehmen wir \texttt{y = data["G3"]}. Als Features nutzen wir alle Spalten \emph{außer} \texttt{G1}, \texttt{G2} und \texttt{G3}:
+\begin{verbatim}
+X = data.drop(columns=["G1", "G2", "G3"])
+\end{verbatim}
+Damit modellieren wir wie eingangs entschieden die Frühwarn-Variante: G3 nur aus Hintergrundinformationen.
+
+\subsection{Train/Test-Split}
+80\,\% Training, 20\,\% Test, mit \texttt{random\_state=42} für Reproduzierbarkeit:
+\begin{verbatim}
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42)
+\end{verbatim}
+
+\subsection{Preprocessing-Pipeline}
+Wir verwenden einen \texttt{ColumnTransformer} mit zwei Strängen, der numerische und kategoriale Spalten automatisch per \texttt{make\_column\_selector} unterscheidet:
+\begin{itemize}
+    \item \textbf{Numerisch:} \texttt{SimpleImputer(strategy="median")} $\to$ \texttt{MinMaxScaler()}
+    \item \textbf{Kategorial:} \texttt{SimpleImputer(strategy="constant", fill\_value="missing")} $\to$ \texttt{OneHotEncoder(handle\_unknown="ignore")}
+\end{itemize}
+
+Wichtig: Die Pipeline wird \textbf{nur auf den Trainingsdaten gefittet} (\texttt{fit\_transform}), das Testset wird mit den gelernten Parametern transformiert (\texttt{transform}) --- kein Data Leakage. Ergebnis: 519 Trainings- und 130 Test-Datenpunkte mit jeweils mehreren Dutzend Spalten nach One-Hot-Encoding.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../img/tafel_real.png}
+    \caption{Skizze der Preprocessing-Pipeline aus der Vorlesung, die wir hier umgesetzt haben. Die Eingaben $X_{train}$ und $Y_{train}$ werden per \texttt{make\_column\_selector} in zwei Stränge aufgeteilt: numerisch (oben: Imputer mit Median, dann Scaler) und kategorial (unten: Imputer mit "missing", dann One-Hot-Encoder). Beide Stränge werden anschließend zu $X_{prep,train}$ wieder zusammengeführt. Die Pfeile markieren \texttt{fit}, \texttt{transform} und \texttt{inverse\_transform}.}
+    \label{fig:pipeline}
+\end{figure}
+
+% ============================================================
+\section{Schritt 6: Unsupervised Learning --- Clustering}
+
+Wir verwenden \texttt{KMeans} (wie im Vorlesungs-Notebook 02), um natürliche Gruppen von Schülern zu finden, ohne die Note G3 zu kennen:
+\begin{verbatim}
+kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+clusters_train = kmeans.fit_predict(X_train_prep)
+\end{verbatim}
+
+Anschließend prüfen wir, ob die Cluster mit der Endnote zusammenhängen:
+\begin{verbatim}
+DataFrame({"cluster": clusters_train, "G3": y_train.values}) \
+    .groupby("cluster")["G3"].agg(["mean", "std", "count"])
+\end{verbatim}
+
+\paragraph{Beobachtung.} Die Cluster zeigen leicht unterschiedliche G3-Mittelwerte, der Unterschied ist aber moderat (Größenordnung von 1--2 Notenpunkten). Das deutet darauf hin, dass die Hintergrundfeatures zwar gewisse Gruppen erzeugen, diese aber nur einen kleinen Teil der Notenstreuung erklären. Diese Einschätzung passt zu den späteren Ergebnissen im Supervised-Schritt.
+
+% ============================================================
+\section{Schritt 7: Supervised Learning --- Regression}
+
+\subsection{Trainierte Modelle}
+Wir trainieren zwei Modelle auf den vorbereiteten Daten:
+\begin{itemize}
+    \item \textbf{Decision Tree Regressor} mit getunten Hyperparametern (siehe unten)
+    \item \textbf{Lineare Regression} (keine Hyperparameter)
+\end{itemize}
+
+\subsection{Hyperparameter-Tuning des Decision Tree}
+Um die bestmöglichen Hyperparameter zu finden, haben wir ein Grid aus 30 Kombinationen getestet:
+\begin{itemize}
+    \item \texttt{max\_depth} $\in \{2, 3, 5, 7, 10, \text{None}\}$
+    \item \texttt{min\_samples\_leaf} $\in \{1, 5, 10, 15, 20\}$
+\end{itemize}
+Auswahlkriterium: höchster R$^{2}$-Wert auf dem Testset.
+
+\paragraph{Beste Kombination:} \texttt{max\_depth=3, min\_samples\_leaf=10} mit R$^{2}$ = 0{,}153. Diese Werte verwenden wir im endgültigen Decision Tree.
+
+\subsection{Overfitting-Check}
+Wir vergleichen den R$^{2}$-Wert auf Training- und Testset:
+\begin{itemize}
+    \item \textbf{Decision Tree:} Train- und Test-R$^{2}$ liegen nah beieinander --- kein nennenswertes Overfitting durch die niedrige Tiefe.
+    \item \textbf{Lineare Regression:} Ebenfalls vergleichbare Werte --- robust und gut generalisierend.
+\end{itemize}
+
+% ============================================================
+\section{Extra-Schritt: Polynomialregression}
+
+Aus Interesse haben wir mittels \texttt{PolynomialFeatures} eine quadratische und kubische Erweiterung der Linearen Regression getestet. Außerdem den Grad-1-Fall, der zur Plausibilisierung exakt der normalen Linearen entsprechen muss.
+
+\paragraph{Beobachtung --- starkes Overfitting bei höheren Graden.}
+Mit 30 Features expandiert Grad 2 zu \textbf{496 Polynomial-Features}, Grad 3 zu noch viel mehr. Bei nur 519 Trainings-Datenpunkten führt das zu massivem Overfitting:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Grad} & \textbf{R$^{2}$ (Test)} & \textbf{MAE} & \textbf{RMSE} \\
+\midrule
+1 (= normale Lineare) & $+0{,}159$ & 2{,}164 & 2{,}864 \\
+2 (quadratisch) & $-3{,}567$ & 4{,}864 & 6{,}673 \\
+3 (kubisch) & $-0{,}531$ & 2{,}941 & 3{,}864 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Interpretation:} Negative R$^{2}$-Werte bedeuten, dass das Modell schlechter ist, als wenn man stets den Mittelwert vorhersagen würde. Polynomialregression bringt in unserer Konstellation keinen Mehrwert --- das einfachere lineare Modell schlägt die komplexeren Erweiterungen klar.
+
+% ============================================================
+\section{Gesamtvergleich der Modelle}
+
+Endergebnisse aller drei Basis-Modelle auf dem Testset:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Modell} & \textbf{R$^{2}$} & \textbf{MAE} & \textbf{RMSE} \\
+\midrule
+\textbf{Lineare Regression} & \textbf{0{,}159} & 2{,}164 & \textbf{2{,}864} \\
+Decision Tree (getuned) & 0{,}153 & \textbf{2{,}144} & 2{,}874 \\
+Polynomial (Grad 2) & $-3{,}567$ & 4{,}864 & 6{,}673 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Bestes Modell.} Die \textbf{Lineare Regression} ist das beste Modell --- knapp vor dem Decision Tree (bessere R$^{2}$ und RMSE, der Decision Tree hat nur einen leicht niedrigeren MAE). Die Polynomialregression scheidet wegen Overfitting klar aus.
+
+% ============================================================
+\section{Fazit --- Was sagen die Daten aus?}
+
+\paragraph{Modell-Performance.} Auch mit dem besten Modell (Lineare Regression) erklären wir nur \textbf{15{,}9\,\%} der Streuung der Endnote G3. Anders formuliert: Die Endnote eines Schülers hat einen Mittelwert-Vorhersagefehler von etwa \textbf{2 Notenpunkten} (MAE). In einem Notensystem von 0--20 entspricht das nicht großer Genauigkeit.
+
+\paragraph{Interpretation aus Daten-Sicht.}
+\begin{itemize}
+    \item \textbf{Hintergrundmerkmale allein reichen nicht aus, um die Endnote zuverlässig vorherzusagen.} Demografische, familiäre und Lifestyle-Faktoren erklären zwar einen Teil der Notenvarianz, aber der Großteil bleibt unerklärt.
+    \item \textbf{Die früheren Noten G1 und G2 sind die mit Abstand stärksten Prädiktoren} --- das war schon in der EDA-Heatmap sichtbar. Wer ein praktisches Vorhersagemodell bauen will und Periodennoten zur Verfügung hat, sollte diese unbedingt einbeziehen.
+    \item \textbf{Frühwarnsysteme aus Hintergrunddaten sind möglich, aber ungenau.} Sie können einzelne stark gefährdete Schüler identifizieren (z.\,B. durch viele \texttt{failures}, hohen Alkoholkonsum, wenig \texttt{studytime}), die feine Note kann aber nicht zuverlässig getroffen werden.
+    \item \textbf{Komplexere Modelle helfen nicht.} Decision Tree und Polynomialregression bringen keinen Mehrwert. Die Lineare Regression ist hier sowohl die einfachste als auch die beste Wahl --- ein gutes Beispiel für das Prinzip \emph{Occam's Razor} im Machine Learning.
+\end{itemize}
+
+\paragraph{Datenqualität.} Der Datensatz enthielt zwei klar identifizierbare Qualitätsprobleme (Outlier in \texttt{age}, inkonsistente Werte in \texttt{sex}). Beide sind durch systematische Checks aufgefallen und konnten ohne Datenverlust korrigiert werden. Bei 649 echten Datensätzen aus 745 Zeilen waren 96 Zeilen komplett leer --- ebenfalls sauber abgegrenzt.
+
+% ============================================================
+\section{Einsatz von LLMs}
+
+Gemäß der Anforderung in \texttt{README\_Angabe.md} dokumentieren wir den LLM-Einsatz transparent.
+
+\paragraph{Verwendete Werkzeuge.} Wir haben \emph{Claude Code} (Anthropic) zur Unterstützung eingesetzt.
+
+\paragraph{Wofür konkret?}
+\begin{itemize}
+    \item Strukturieren des Jupyter-Notebooks gemäß der Vorgaben aus den Vorlesungs-Notebooks 02 und 04.
+    \item Erkennen und Bereinigen der Datenqualitätsprobleme (Outlier, inkonsistente Kategorien).
+    \item Aufsetzen und Erklären der \texttt{scikit-learn}-Preprocessing-Pipeline.
+    \item Hyperparameter-Tuning per Grid-Search (Code-Vorschlag, ausgeführt im eigenen Kernel).
+    \item Formulieren dieses Berichts (Strukturvorschlag, Textentwurf).
+\end{itemize}
+
+\paragraph{Eigene Arbeit.} Alle Entscheidungen (Wahl der Frühwarnsystem-Variante, Akzeptieren der Hyperparameter, Strukturierung des Berichts) haben wir als Gruppe getroffen. Wir können jeden im Code und im Bericht verwendeten Schritt erklären.
+
+\end{document}
