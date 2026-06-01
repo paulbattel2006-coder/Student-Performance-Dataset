@@ -17,4 +17,4 @@ jupyter notebook notebooks/student_performance.ipynb
 ```
 
 Hier gehts zu unserem Projektbericht
-[Projektbericht]("./docs/Data_Science.pdf")
+[Projektbericht](./docs/Projektbericht.pdf)
